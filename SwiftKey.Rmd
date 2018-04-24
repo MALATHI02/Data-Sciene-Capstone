@@ -1,0 +1,145 @@
+---
+title: "Swiftkey Capstone"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+The goal of this project is to understand the dataset and to do exploratory analysis for each of the files en_US.blogs, en_US.news, en_US.twitter. Also,
+explain the major features of the data and summarize the plan for creating prediction algorithm. This invovles creating tables and plots.The final task is
+to build word predicion model.
+
+```{r}
+#Load the libraries
+library(dplyr)
+library(ggplot2)
+library(stringi)
+library(tm)
+library(ngram)
+library(wordcloud)
+library(NLP)
+```
+
+## Load Data
+Download the file locally from : https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip
+
+
+```{r}
+setwd(getwd())
+en_blogs <- readLines(con <- file("./final/en_US/en_US.blogs.txt"), encoding = "UTF-8", skipNul = TRUE)
+close(con)
+en_news <- readLines(con <- file("./final/en_US/en_US.news.txt"), encoding = "UTF-8", skipNul = TRUE)
+close(con)
+en_twitter <- readLines(con <- file("./final/en_US/en_US.twitter.txt"), encoding = "UTF-8", skipNul = TRUE)
+close(con)
+```
+
+## Data Statistics
+
+We are calculating size of our files in MB using file info method and also word cound,no of lines and no of characters using strigi which is a string processing package.
+```{r}
+data_stats <- data.frame(File_Name=c("US_blogs", "US_news", "US_twitter"), 
+                         FileSize=c(file.info(".\\en_US\\en_US.blogs.txt")$size/1024*1024, file.info(".\\en_US\\en_US.news.txt")$size/1024*1024, file.info(".\\en_US\\en_US.twitter.txt")$size/1024*1024),
+                         WordCount=sapply(list(en_blogs, en_news, en_twitter), stri_stats_latex)[4,], 
+                         t(rbind(sapply(list(en_blogs, en_news, en_twitter), stri_stats_general)[c('Lines','Chars'),]
+                         )))
+head(data_stats)
+
+```
+
+## Sampling and Data Cleansing
+
+As the data size is huge, we can sample of data to train our models on the smaller sampled dataset. we are going to use 50% sample of data. Once we have sampled the data we can clean it using. We are using tm package for that. We are converting everything to lower case and removing white spaces, punctuation, stop words, numbers etc.
+
+```{r}
+set.seed(12345)
+test_data <- c(sample(en_blogs, length(en_blogs) * 0.005),
+              sample(en_news, length(en_news) * 0.005),
+              sample(en_twitter, length(en_twitter) * 0.005)
+          )
+          
+testdata <- iconv(test_data, "UTF-8", "ASCII", sub="")
+writeLines(testdata, "./sampleTotal.txt")
+sample_corpus <- VCorpus(VectorSource(testdata))
+sample_corpus <- tm_map(sample_corpus, tolower)
+sample_corpus <- tm_map(sample_corpus, stripWhitespace)
+sample_corpus <- tm_map(sample_corpus, removePunctuation)
+sample_corpus <- tm_map(sample_corpus, removeNumbers)
+sample_corpus <- tm_map(sample_corpus, PlainTextDocument)
+sample_corpus <- tm_map(sample_corpus, removeWords, stopwords("english"))
+saveRDS(sample_corpus, file = "./finalCorpus.RData")
+finalCorpusMem <- readRDS("./finalCorpus.RData")
+finalCorpus <-data.frame(text=unlist(sapply(finalCorpusMem,`[`, "content")),stringsAsFactors = FALSE)
+```
+
+## Creating N-grams for the data
+
+We have cleaned and sampled our data. we have done some preprocessing for our data. Now we can build our basic unigram, bi-grams and tri-grams. There are
+single.double and triple word frequency We are using Ngram packge for this purpose.
+
+```{r}
+UnigramTokenizer <-
+    function(x)
+        unlist(lapply(ngrams(words(x), 1), paste, collapse = " "), use.names = FALSE)
+BigramTokenizer <-
+    function(x)
+        unlist(lapply(ngrams(words(x), 2), paste, collapse = " "), use.names = FALSE)
+TrigramTokenizer <-
+    function(x)
+        unlist(lapply(ngrams(words(x), 3), paste, collapse = " "), use.names = FALSE)
+
+  
+unidtf <- TermDocumentMatrix(sample_corpus,control=list(tokenize=UnigramTokenizer))
+bidtf <- TermDocumentMatrix(sample_corpus,control=list(tokenize=BigramTokenizer))
+tridtf <- TermDocumentMatrix(sample_corpus,control=list(tokenize=TrigramTokenizer ))
+                             
+uni_tf <- findFreqTerms(unidtf, lowfreq = 50 )
+bi_tf <- findFreqTerms(bidtf, lowfreq = 10 )
+tri_tf <- findFreqTerms(tridtf, lowfreq = 10 )
+
+uni_freq <- rowSums(as.matrix(unidtf[uni_tf, ]))
+uni_freq <- data.frame(words=names(uni_freq), frequency=uni_freq)
+unigram <- uni_freq[order(uni_freq$frequency,decreasing = TRUE),]
+write.csv(unigram[unigram$frequency > 1,],"unigram.csv",row.names=F)
+unigram <- read.csv("unigram.csv",stringsAsFactors = F)
+saveRDS(unigram, file = "unigram.RData")
+
+bi_freq <- rowSums(as.matrix(bidtf[bi_tf, ]))
+bi_freq <- data.frame(words=names(bi_freq), frequency=bi_freq)
+bigram <- bi_freq[order(bi_freq$frequency,decreasing = TRUE),]
+bigram$words <- as.character(bigram$words)
+str2 <- strsplit(bigram$words,split=" ")
+bigram <- transform(bigram, 
+                    one = sapply(str2,"[[",1),   
+                    two = sapply(str2,"[[",2))
+bigram <- data.frame(word1 = bigram$one,word2 = bigram$two,freq = bigram$freq,stringsAsFactors=FALSE)
+##Save the bigram file
+write.csv(bigram[bigram$freq > 1,],"bigram.csv",row.names=F)
+bigram <- read.csv("bigram.csv",stringsAsFactors = F)
+saveRDS(bigram,"bigram.RData")
+
+tri_freq <- rowSums(as.matrix(tridtf[tri_tf, ]))
+tri_freq <- data.frame(words=names(tri_freq), frequency=tri_freq)
+trigram <- tri_freq[order(tri_freq$frequency,decreasing = TRUE),]
+##################### 
+trigram$words <- as.character(trigram$words)
+str3 <- strsplit(trigram$words,split=" ")
+trigram <- transform(trigram,
+                     one = sapply(str3,"[[",1),
+                     two = sapply(str3,"[[",2),
+                     three = sapply(str3,"[[",3))
+# trigram$words <- NULL
+trigram <- data.frame(word1 = trigram$one,word2 = trigram$two, 
+                      word3 = trigram$three, freq = trigram$freq,stringsAsFactors=FALSE)
+# saving files
+write.csv(trigram[trigram$freq > 1,],"trigram.csv",row.names=F)
+trigram <- read.csv("./trigram.csv",stringsAsFactors = F)
+saveRDS(trigram,"trigram.RData")
+
+head(tri_freq)
+```
+

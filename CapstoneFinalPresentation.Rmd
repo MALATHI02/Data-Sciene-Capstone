@@ -1,0 +1,40 @@
+---
+title: "Coursera Data Science Capstone - Predict next word."
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## The Objective
+
+The main goal of this project is to build a shiny app that is able to predict next word.
+
+Data has been downloaded from https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip.
+
+The data consists of three data frame sets- en_US Blogs, en_US News and en_US twitter
+
+## Approach
+
+- After loading the data, a sample of 50% of the data from each of the files
+was created, cleansed and tokenized to be used as a corpous of text. Data was 
+converted to lowercase, removed punctuation, whitespace and numbers.
+
+- The sample text was tokenized using n-gram to build the predictive model.
+
+- The n-gram files - Unigram(single word), Bigram(two words) and Trigram(three words) are matrices with frequencies of words used in the alogrithm to predict the next word.
+
+## Shiny Application
+
+- The Shiny application allows the prediction of the next possible word in a sentence.
+
+- The user enter's the text in an input box, and the application returns the most
+likely word to be used.
+
+- The predicted word is obtained from the n-grams matrices, comparing it with tokenized frequency of 2 and 3 grams sequences.
+
+## Screenshot of the Shiny Appy
+![ ](/C:/Malathi/Coursera/CapStone/final/shinyScreen.png)
+
+
