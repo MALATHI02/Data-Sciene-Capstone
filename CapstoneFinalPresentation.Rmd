@@ -37,4 +37,13 @@ likely word to be used.
 ## Screenshot of the Shiny Appy
 ![ ](/C:/Malathi/Coursera/CapStone/final/shinyScreen.png)
 
+## Links
+
+- Github link to the code :
+https://github.com/MALATHI02/Data-Sciene-Capstone
+
+- Shiny App :
+https://mvakka.shinyapps.io/DataScienceCourseraCapstone/
+
+
 
