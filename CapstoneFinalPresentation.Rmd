@@ -35,7 +35,7 @@ likely word to be used.
 - The predicted word is obtained from the n-grams matrices, comparing it with tokenized frequency of 2 and 3 grams sequences.
 
 ## Screenshot of the Shiny Appy
-![ ](/C:/Malathi/Coursera/CapStone/final/shinyScreen.png)
+![ ](shinyScreen.png)
 
 ## Links
 
